@@ -2,163 +2,166 @@ import torch
 from diffusers import DiffusionPipeline
 from torchvision import models, transforms
 from PIL import Image
-import matplotlib.pyplot as plt
 import os
 from pycocotools.coco import COCO
 import numpy as np
 from sklearn.svm import SVC
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
+import joblib
 
-# Percorso al tuo dataset COCO
-coco_root = '/Users/pasqualericciulli/Downloads/train2017'
-coco_annotation_file = '/Users/pasqualericciulli/Downloads/annotations/instances_train2017.json'
+# this function load the last available checkpoint
+def load_checkpoint(checkpoint_dir):
+    checkpoints = [f for f in os.listdir(checkpoint_dir) if f.startswith('svm_classifier_checkpoint')]
+    if checkpoints:
+        latest_step = max([int(f.split('_')[-1].split('.')[0]) for f in checkpoints])
+        #these are the paths to the folder in my drive
+        model_path = os.path.join(checkpoint_dir, f'svm_classifier_checkpoint_{latest_step}.pkl')
+        features_path = os.path.join(checkpoint_dir, f'features_checkpoint_{latest_step}.npy')
+        labels_path = os.path.join(checkpoint_dir, f'labels_checkpoint_{latest_step}.npy')
+
+        # load the SVM, features and labels
+        classifier = joblib.load(model_path)
+        features_list = np.load(features_path, allow_pickle=True).tolist()
+        labels = np.load(labels_path, allow_pickle=True).tolist()
+
+        print(f"Checkpoint successfully loaded {latest_step}")
+        return classifier, features_list, labels, latest_step
+    else:
+        return None, [], [], 0
+
+#The train2017 and instances_train2017_subset are a subsets of COCO's datset, they contain only 2000 images
+coco_root = '/content/drive/MyDrive/dataset_ridotto_test/train2017'
+coco_annotation_file = '/content/drive/MyDrive/dataset_ridotto_test/instances_train2017_subset.json'
 coco = COCO(coco_annotation_file)
 
-# Verifica se c'è una GPU disponibile
+# check if I have a GPU available 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-# Usa torch.float16 solo se c'è una GPU, altrimenti torch.float32
 dtype = torch.float16 if device == "cuda" else torch.float32
 
 pipeline = DiffusionPipeline.from_pretrained("stabilityai/stable-diffusion-2-1", torch_dtype=dtype)
 
-# Se possibile, utilizza 'accelerate' per migliorare le prestazioni
+# accelerate improve the performance
 try:
     pipeline.enable_attention_slicing()
     print("Accelerate abilitato per migliorare le prestazioni.")
 except ImportError:
-    print("Attenzione: 'accelerate' non trovato. Per migliorare le prestazioni, installalo con 'pip install accelerate'.")
+    print("Attenzione: 'accelerate' non trovato.")
 
 pipeline.to(device)
 
-# Funzione per generare un'immagine
+#take the data given from the dataset and generate the image with stable diffusion
 def generate_image(prompt):
     image = pipeline(prompt, num_inference_steps=8).images[0]
     return image.convert("RGB")
 
-# Funzione per applicare un filtro passa-alto
-def high_pass_filter(image):
-    image_np = np.array(image.convert('L'))  # Converte in scala di grigi
-    f_transform = np.fft.fft2(image_np)
-    f_transform_shifted = np.fft.fftshift(f_transform)
-    
-    # Definisci una maschera per il filtro passa-alto
-    rows, cols = image_np.shape
-    crow, ccol = rows // 2, cols // 2
-    mask = np.ones((rows, cols), np.uint8)
-    r = 30  # Raggio del filtro passa-alto
-    mask[crow-r:crow+r, ccol-r:ccol+r] = 0
-    
-    # Applica la maschera
-    f_transform_shifted_filtered = f_transform_shifted * mask
-    f_ishift = np.fft.ifftshift(f_transform_shifted_filtered)
-    img_back = np.fft.ifft2(f_ishift)
-    img_back = np.abs(img_back)
-    
-    return img_back
-
-# Funzione per calcolare il fingerprint spettrale
-def get_spectral_fingerprint(image):
-    filtered_image = high_pass_filter(image)
-    f_transform = np.fft.fft2(filtered_image)
-    f_transform_shifted = np.fft.fftshift(f_transform)
-    magnitude_spectrum = np.abs(f_transform_shifted)
-    magnitude_spectrum = np.log(magnitude_spectrum + 1)
-    return magnitude_spectrum
-
-# Funzione per estrarre caratteristiche da VGG16
+#
 def extract_vgg_features(image, model):
     preprocess = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
-    input_tensor = preprocess(image).unsqueeze(0)  # Aggiunge la dimensione batch
+    input_tensor = preprocess(image).unsqueeze(0).to(device)  # add the dimension batch and transfer to the GPU
     with torch.no_grad():
         features = model(input_tensor)
-    return features.flatten().numpy()  # Appiattisce le caratteristiche
+    return features.flatten().cpu().numpy()
 
-# Carica il modello VGG16 pre-addestrato
+# Funzione per salvare le immagini fake
+def save_image(image, save_dir, img_id):
+    os.makedirs(save_dir, exist_ok=True)  # Crea la cartella se non esiste
+    save_path = os.path.join(save_dir, f"fake_image_{img_id}.jpg")
+    image.save(save_path, format="JPEG")
+    print(f"Immagine salvata in: {save_path}")
+
+# this function save a checkpoint of the SVM model, beacuse in google colab I can't process more than 500 images with a GPU, so I save and restert the training from 500
+def save_checkpoint(classifier, features_list, labels, step):
+    checkpoint_dir = "/content/drive/MyDrive/checkpoints"
+    os.makedirs(checkpoint_dir, exist_ok=True)
+
+    # save the SVM model
+    model_path = os.path.join(checkpoint_dir, f'svm_classifier_checkpoint_{step}.pkl')
+    joblib.dump(classifier, model_path)
+
+    features_path = os.path.join(checkpoint_dir, f'features_checkpoint_{step}.npy')
+    labels_path = os.path.join(checkpoint_dir, f'labels_checkpoint_{step}.npy')
+
+    np.save(features_path, features_list)
+    np.save(labels_path, labels)
+
+    print(f"Checkpoint saved: {model_path}")
+
+# Load a VGG16 pre-trained model and remove the last layer
 vgg16 = models.vgg16(pretrained=True)
-vgg16.classifier = vgg16.classifier[:-1]  # Rimuove l'ultimo strato
-vgg16.eval()
+vgg16.classifier = vgg16.classifier[:-1]  # remove the last layer
+vgg16.eval().to(device)  #put in eval modality and tansfer to the GPU
 
-# Estrazione delle caratteristiche per l'addestramento del classificatore
-features_list = []
-labels = []
+#I save the fake image generated by stable diffusion
+save_dir = "/content/drive/MyDrive/fake_image"
+checkpoint_dir = "/content/drive/MyDrive/checkpoints" 
 
-# Esempio di utilizzo: prendi alcune immagini dal dataset
+# restart training from the checkpoist if it is possible 
+classifier, features_list, labels, last_step = load_checkpoint(checkpoint_dir)
+
+# if none checkpoint is available start from zero
+if classifier is None:
+    classifier = SVC(kernel='linear')
+    features_list = []
+    labels = []
+    last_step = 0
+
+#thake the coco's images
 image_ids = coco.getImgIds()
-sample_ids = image_ids[:10]  # Prendi 10 immagini come esempio
+sample_ids = image_ids[last_step:]  # last step is the last step of the checkpoint
+
+checkpoint_interval = 500  # every 500 images will save a checkpoint
+step = last_step
 
 for img_id in sample_ids:
     img_data = coco.imgs[img_id]
     img_path = os.path.join(coco_root, img_data['file_name'])
+    if(step >= 1000): #I choose to stop the iteration at 1000 images, beacuse it is to much computationally expensive train and generate for each image
+        break
+  
+    try:
+        #take the real image
+        image_real = Image.open(img_path).convert("RGB")
+        real_features = extract_vgg_features(image_real, vgg16)
+        features_list.append(real_features)
+        labels.append(1)  # in labels append 1 for the real images
 
-    # Carica l'immagine reale
-    image_real = Image.open(img_path).convert("RGB")
+        # get the category for each image to generate fake images, in coco we have the annotations for each image not the image
+        ann_ids = coco.getAnnIds(imgIds=[img_id], iscrowd=False)
+        anns = coco.loadAnns(ann_ids)
+        categories = [coco.cats[ann['category_id']]['name'] for ann in anns]
+        prompt = ", ".join(categories)
 
-    # Estrai le caratteristiche dall'immagine reale
-    real_features = extract_vgg_features(image_real, vgg16)
-    features_list.append(real_features)
-    labels.append(1)  # 1 per immagini reali
+        
+        image_fake = generate_image(prompt)
 
-    # Ottieni le categorie associate all'immagine per generare un'immagine fake
-    ann_ids = coco.getAnnIds(imgIds=[img_id], iscrowd=False)
-    anns = coco.loadAnns(ann_ids)
-    categories = [coco.cats[ann['category_id']]['name'] for ann in anns]
-    prompt = ", ".join(categories)
+        save_image(image_fake, save_dir, img_id)
 
-    # Genera un'immagine fake usando il prompt
-    image_fake = generate_image(prompt)
+        fake_features = extract_vgg_features(image_fake, vgg16)
+        features_list.append(fake_features)
+        labels.append(0)  # in lapels append 0 for the fake image
 
-    # Estrai le caratteristiche dall'immagine fake
-    fake_features = extract_vgg_features(image_fake, vgg16)
-    features_list.append(fake_features)
-    labels.append(0)  # 0 per immagini fake
+        step += 1
 
-# Dividi i dati in training e test set
-X_train, X_test, y_train, y_test = train_test_split(features_list, labels, test_size=0.2, random_state=42)
+        #save the checkpoint each 500 images
+        if step % checkpoint_interval == 0:
+            classifier.fit(features_list, labels) 
+            save_checkpoint(classifier, features_list, labels, step)
 
-# Addestra un classificatore SVM
-classifier = SVC(kernel='linear')
-classifier.fit(X_train, y_train)
+    except Exception as e:
+        print(f"Errore nell'elaborazione dell'immagine ID {img_id}: {e}")
 
-# Fai previsioni sul test set
-y_pred = classifier.predict(X_test)
+# training the model on all the extracted features and labels
+classifier.fit(features_list, labels)
 
-# Mostra il report di classificazione
-print(classification_report(y_test, y_pred))
+# save the final model
+joblib.dump(classifier, 'svm_classifier.pkl')
+print("Modello SVM salvato come 'svm_classifier.pkl'")
 
-# Ora integriamo la parte di riconoscimento
-# Esempio di utilizzo per riconoscere se un'immagine è reale o fake
-#questo andrà fatto in un altro file
-for img_id in sample_ids:
-    img_data = coco.imgs[img_id]
-    img_path = os.path.join(coco_root, img_data['file_name'])
 
-    # Carica l'immagine reale
-    image_real = Image.open(img_path).convert("RGB")
-
-    # Estrai le caratteristiche dall'immagine reale
-    real_features = extract_vgg_features(image_real, vgg16)
-
-    # Fai la previsione
-    prediction = classifier.predict(real_features.reshape(1, -1))  # Reshape per SVM
-    result = "Real" if prediction[0] == 1 else "Fake"
-
-    print(f"Risultato per l'immagine ID {img_id}: {result}")
-
-    # Genera un'immagine fake usando il prompt
-    prompt = " ".join(categories)
-    image_fake = generate_image(prompt)
-
-    # Estrai le caratteristiche dall'immagine fake
-    fake_features = extract_vgg_features(image_fake, vgg16)
-
-    # Fai la previsione
-    prediction_fake = classifier.predict(fake_features.reshape(1, -1))
-    result_fake = "Real" if prediction_fake[0] == 1 else "Fake"
-
-    print(f"Risultato per l'immagine generata: {result_fake}")
+#from google.colab import drive
+#drive.mount('/content/drive')
+# pip install diffusers
