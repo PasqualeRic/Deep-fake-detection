@@ -11,8 +11,8 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_sc
 import json  # Importa il modulo json per salvare i dati
 
 # Percorso al dataset COCO
-coco_root = '/content/drive/MyDrive/dataset_ridotto/test2017' 
-coco_annotation_file = '/content/drive/MyDrive/dataset_ridotto/instances_test2017_subset.json'
+coco_root = '/content/drive/MyDrive/dataset_ridotto_test/test2017' 
+coco_annotation_file = '/content/drive/MyDrive/dataset_ridotto_test/instances_test2017_subset.json'
 coco = COCO(coco_annotation_file)
 
 # Verifica della GPU disponibile
@@ -219,6 +219,28 @@ for i, img_id in enumerate(sample_ids, start=1):
         metrics['noisy']['recall'] = recall_score(y_true, y_pred_noisy)
         metrics['noisy']['accuracy'] = accuracy_score(y_true, y_pred_noisy)
         metrics['noisy']['f1'] = f1_score(y_true, y_pred_noisy)
+        # Determina la classificazione come testo
+        real_label = 'Real' if real_prediction == 1 else 'Fake'
+        fake_label = 'Real' if fake_prediction == 1 else 'Fake'
+
+        # Determina la classificazione come testo per le immagini rumorose
+        real_label_noisy = 'Real' if real_prediction_noisy == 1 else 'Fake'
+        fake_label_noisy = 'Real' if fake_prediction_noisy == 1 else 'Fake'
+
+        # Classifica le immagini compresse
+        real_prediction_compression_80 = classifier.predict(real_features_compression_80)[0]
+        fake_prediction_compression_80 = classifier.predict(fake_features_compression_80)[0]
+
+        # Determina la classificazione come testo per le immagini compresse a 80%
+        real_label_compression_80 = 'Real' if real_prediction_compression_80 == 1 else 'Fake'
+        fake_label_compression_80 = 'Real' if fake_prediction_compression_80 == 1 else 'Fake'
+
+        real_prediction_compression_60 = classifier.predict(real_features_compression_60)[0]
+        fake_prediction_compression_60 = classifier.predict(fake_features_compression_60)[0]
+
+        # Determina la classificazione come testo per le immagini compresse a 60%
+        real_label_compression_60 = 'Real' if real_prediction_compression_60 == 1 else 'Fake'
+        fake_label_compression_60 = 'Real' if fake_prediction_compression_60 == 1 else 'Fake'
 
         # Stampa i risultati
         print(f"Immagine ID {img_id}: Reale -> {real_label}, Fake -> {fake_label}")
@@ -228,7 +250,7 @@ for i, img_id in enumerate(sample_ids, start=1):
         print(i)
 
         # Visualizza le immagini
-        #plot_images(image_real, image_fake, image_real_noisy, image_fake_noisy, image_real_compressed_80, image_fake_compressed_80,image_real_compressed_60, image_fake_compressed_60)
+        plot_images(image_real, image_fake, image_real_noisy, image_fake_noisy, image_real_compressed_80, image_fake_compressed_80,image_real_compressed_60, image_fake_compressed_60)
 
     except Exception as e:
         print(f"Errore nell'elaborazione dell'immagine ID {img_id}: {e}")
