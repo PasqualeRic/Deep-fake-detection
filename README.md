@@ -19,11 +19,28 @@ these are the result of 1st epoch and 100th epoch:
 
 ## VGG16 classifier
 This model is used for feature extraction and as a classifier, we have used a pre-trained model for feature extraction, but we have trained an SVM as the last layer of VGG16 to make predictions, in this work, we traind three SVM models, one for normal images, one for 64x64 images and one for 256x256 images, each SVM model takes as input 3 images, one real with label 1 and two generated images (one for GAN and one for stable) with label 0.
-This is an example with upsampling, downsampling and no changes:
+This is an example with original, downsampling to 64x64 and upsampling to 256x256:
 <p float="left">
-  <img src='imgs/4.png' width="200px"/>
-  <img src='imgs/final_generated_images.png' width="200px"/>
-  <img src='imgs/final_generated_images.png' width="200px"/>
+  <img src='imgs/original/real_image_real_image_248242.jpg.jpg' width="200px"/>
+  <img src='imgs/original/image_64x64real_image_248242.jpg.jpg' width="200px"/>
+  <img src='imgs/original/image_256x256real_image_248242.jpg.jpg' width="200px"/>
 </p>
+## aggiungere cosa abbiamo fatto con modelli e test fatti
 
+## Structure of the project
+- `VGG16/`
+  - `training-vgg16.ipynb`: This file could be uploaded to kaggle to work.
+  - `training_VGG16_64_256`: This file contains the code for training the SVM model with image sizes 64x64 and 256x256 from coco.
+  - `training_VGG16_normal.py`: This file contains the code for generating the fake images with stable diffusion, for creating the dataset for training and testing and also for training the model on images without scaling.
+
+- `GAN/`
+  - `Generator.py`: This file contains the code for generating the fake images with GAN.
+  - `training_GAN.py`: This file contains the code for training the GAN model with image from coco.
+  - `gan.ipynb`: This file could be uploaded to kaggle to work
+## Installazione
+
+1. Clona il repository.
+   ```bash
+   git clone https://github.com/PasqualeRic/Deep-fake-detection.git
+   cd Deep-fake-detection
 
