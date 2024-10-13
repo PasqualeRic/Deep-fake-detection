@@ -4,14 +4,17 @@ To predict wheter an image is real or generated, we use a **VGG16**, of which we
 
 **Authors**: Pasquale Ricciulli, Francesco Conforti
 
-## Datase
+## Dataset
 Il COCO (Common Objects in Context) è uno dei dataset più utilizzati e completi per lo sviluppo di modelli di visione artificiale. È stato progettato per supportare diverse attività di computer vision, come il riconoscimento di oggetti, la segmentazione, la didascalizzazione di immagini, e la comprensione contestuale.
 
 Caratteristiche principali del dataset COCO:
 Immagini annotate: Il dataset contiene oltre 330.000 immagini ad alta risoluzione, di cui più di 200.000 sono annotate con didascalie dettagliate.
 Oggetti e categorie: COCO include oltre 80 categorie di oggetti comuni come persone, animali, veicoli, utensili, e strumenti presenti nelle immagini. Ciascuna immagine può contenere uno o più oggetti annotati.
+
 Segmentazione e bounding box: Oltre al riconoscimento degli oggetti, COCO fornisce annotazioni di segmentazione per ogni oggetto, il che significa che gli oggetti vengono delineati in modo preciso all'interno dell'immagine (oltre ai tradizionali bounding box).
+
 Didascalie (captions): Una parte importante del dataset contiene didascalie in linguaggio naturale che descrivono il contenuto delle immagini, utile per task come la generazione automatica di descrizioni di immagini o la visual question answering (VQA).
+
 Scene complesse: Le immagini di COCO non contengono solo oggetti isolati, ma spesso presentano oggetti in contesti reali, con sovrapposizioni e interazioni tra gli oggetti, il che rende il dataset molto utile per capire la relazione tra oggetti in ambienti complessi.
 
 ## Stable Diffusion
@@ -31,7 +34,7 @@ these are the result of 1st epoch and 100th epoch:
 </p>
 
 Di seguito riportato il grafico contenente le loss che abbiamo salvato durante la fase di addestramento:
-<img src='imgs/loss_plot.png' width="300px"/>
+<img src='imgs/loss_plot.png' width="600px"/>
 ## VGG16 classifier
 This model is used for feature extraction and as a classifier, we have used a pre-trained model for feature extraction, but we have trained an SVM as the last layer of VGG16 to make predictions, in this work, we traind three SVM models, one for **normal images**, one for **64x64 images** and one for **256x256 images**, each SVM model takes as input 3 images, one real with label 1 and two generated images (one for GAN and one for stable) with label 0.
 This is an example with original, downsampling to 64x64 and upsampling to 256x256:
@@ -85,6 +88,9 @@ The results are shown in the table below:
 |**Combined 64x64 Compression 60%**   |  0.7145      |  0.6616       |  0.8780     |  0.7546    |
 |**Combined 64x64 Compression 40%**   |  0.6993      |  0.6468       |  0.8780     |  0.7449    |
 |**Combined 64x64**                   |  0.6583      |  0.6096       |  0.8805     |  0.7204    |
+|**Gan**                              |              |               |             |            |
+|**Stable**                           |              |               |             |            |
+
 
 **GAN 256x256**: Presenta buone metriche di accuratezza, precisione, richiamo e F1-score, suggerendo che il modello riesce a discriminare tra immagini reali e fake con una certa efficacia.
 
