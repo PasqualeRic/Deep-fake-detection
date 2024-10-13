@@ -13,8 +13,8 @@ The GAN model, on the other hand, was created from scratch by us, has 5 convolut
 these are the result of 1st epoch and 100th epoch:
 
 <p float="left">
-  <img src='imgs/4.png' width="200px"/>
-  <img src='imgs/final_generated_images.png' width="200px"/>
+  <img src='imgs/4.png' width="300px"/>
+  <img src='imgs/final_generated_images.png' width="300px"/>
 </p>
 
 ## VGG16 classifier
@@ -25,9 +25,14 @@ This is an example with original, downsampling to 64x64 and upsampling to 256x25
   <img src='imgs/original/image_64x64real_image_248242.jpg.jpg' width="200px"/>
   <img src='imgs/original/image_256x256real_image_248242.jpg.jpg' width="200px"/>
 </p>
-## aggiungere cosa abbiamo fatto con modelli e test fatti
+
+## Test
 
 
+In this section we want to find out which is the best model to generate the images, so we pass the Gan-generated images and the original images to the classifier and calculate the metrics, we repeat this operation for the stable diffusion images as well, after which we train two more classifiers one for 64x64 images and one for 256x256 images, then upsample or downsample the images and calculate the metrics again.
+
+In the end, we tested whether the classifier improves its metrics with images at different compression levels.
+The metrics used are accuracy, recall, f1-score and precision, 
 
 ## Structure of the project
 - `Test/`
