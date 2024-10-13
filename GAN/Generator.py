@@ -1,4 +1,4 @@
-#GENERATORE GAN IMMAGINI 
+#This is a GAN generator
 import torch
 import os
 import torch.nn as nn
@@ -6,14 +6,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torchvision.utils as vutils
 
-# Definisci i parametri utilizzati per l'addestramento
-nz = 100  # Dimensione del vettore latente z
-ngf = 64  # Feature maps nel generatore
-nc = 3    # Numero di canali dell'immagine (3 per immagini RGB)
-ngpu = 2  # Numero di GPU
+
+# Define the parameters used for training
+nz = 100  #  Size of latent vector z
+ngf = 64  # Feature maps in the generator 
+nc = 3    # Number of image channels (3 for RGB images)
+ngpu = 2  # Nummber of GPU
 num_images = 2000
 
-# Carica il generatore
+# Load the Generator
 class Generator(nn.Module):
     def __init__(self, ngpu):
         super(Generator, self).__init__()
@@ -38,35 +39,34 @@ class Generator(nn.Module):
     def forward(self, input):
         return self.main(input)
 
-# Inizializza il generatore
+# Initialize the generator
 device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 netG = Generator(ngpu).to(device)
 
-# Carica i pesi del generatore salvato
+# Load the weight of the generator
 checkpoint_path_generator = '/kaggle/input/100/pytorch/default/1/checkpoint_generator.pth'
 checkpoint = torch.load(checkpoint_path_generator)
 
-# Se i pesi sono stati salvati con DataParallel, rimuovi 'module.' dai nomi
+
+#If the weights were saved with DataParallel, remove ‘module.’ from the names
 if 'module.' in list(checkpoint.keys())[0]:
     checkpoint = {k.replace('module.', ''): v for k, v in checkpoint.items()}
 
 netG.load_state_dict(checkpoint)
 
-# Se hai più GPU, usa DataParallel
 if (device.type == 'cuda') and (ngpu > 1):
     netG = nn.DataParallel(netG, list(range(ngpu)))
     
-# Crea la cartella per salvare le immagini
+# Create the directory 
 output_folder = '/kaggle/working/generated_images'
 os.makedirs(output_folder, exist_ok=True)
 
-# Genera e salva le immagini
+# generate and save the images
 with torch.no_grad():
     for i in range(num_images):
-        fixed_noise = torch.randn(1, nz, 1, 1, device=device)  # Vettore di rumore
+        fixed_noise = torch.randn(1, nz, 1, 1, device=device)  #Noise vector
         fake = netG(fixed_noise).detach().cpu()
 
-        # Salva l'immagine
         image_path = os.path.join(output_folder, f'generated_image_{i + 1}.png')
         vutils.save_image(fake, image_path, normalize=True)
 

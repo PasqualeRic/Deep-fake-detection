@@ -1,4 +1,3 @@
-#FUNZIONANTE DA CONSEGNARE
 import argparse
 import os
 import random
@@ -10,14 +9,14 @@ import torchvision.transforms as transforms
 import torchvision.utils as vutils
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import Image  # Importa PIL per il caricamento delle immagini
+from PIL import Image 
 
 # Set random seed for reproducibility
 manualSeed = 999
 print("Random Seed: ", manualSeed)
 random.seed(manualSeed)
 torch.manual_seed(manualSeed)
-torch.use_deterministic_algorithms(True)  # Necessario per risultati riproducibili
+torch.use_deterministic_algorithms(True) 
 
 # Root directory for dataset
 dataroot = "/kaggle/input/coco-2017-dataset/coco2017/train2017"
@@ -44,7 +43,7 @@ ngf = 64
 ndf = 64
 
 # Number of training epochs
-num_epochs = 100  # Aumenta il numero di epoche se necessario
+num_epochs = 100 
 
 # Learning rate for optimizers
 lr = 0.0002
@@ -55,7 +54,7 @@ beta1 = 0.5
 # Number of GPUs available. Use 0 for CPU mode.
 ngpu = 2
 
-# Imposta i percorsi per i checkpoint
+# Path of checkpoints
 checkpoint_path_generator = 'checkpoint_generator.pth'
 checkpoint_path_discriminator = 'checkpoint_discriminator.pth'
 checkpoint_path_epoch = 'checkpoint_epoch.pth'
@@ -65,7 +64,7 @@ path_generator = '/kaggle/input/100/pytorch/default/1/checkpoint_generator.pth'
 path_discriminator = '/kaggle/input/100/pytorch/default/1/checkpoint_discriminator.pth'
 path_epoch = '/kaggle/input/100/pytorch/default/1/checkpoint_epoch.pth'
 l_path = '/kaggle/input/100/pytorch/default/1/losses-6.npy'
-# Imposta l'intervallo di checkpoint
+# The interval to generate the checkpoints
 checkpoint_interval = 10
 
 # Custom dataset class for loading images from a directory
@@ -277,19 +276,19 @@ for epoch in range(start_epoch, num_epochs):
     
     np.save(losses_path, {'g_losses': g_losses, 'd_losses': d_losses})
     print(f"Perdite salvate su {losses_path}.")
-    # Salva i generator e discriminator
+    # Save the generator and discriminator
     if (epoch + 1) % checkpoint_interval == 0:
         torch.save(netG.state_dict(), checkpoint_path_generator)
         torch.save(netD.state_dict(), checkpoint_path_discriminator)
-        torch.save(epoch + 1, checkpoint_path_epoch)  # Salva l'epoca corrente
+        torch.save(epoch + 1, checkpoint_path_epoch)
         print(f"Modelli salvati dopo {epoch + 1} epoche.")
         
-        # Salva le perdite su un file
+        # Save the loss
 
         np.save(losses_path, {'g_losses': g_losses, 'd_losses': d_losses})
         print(f"Perdite salvate su {losses_path}.")
 
-        # Genera e visualizza immagini ogni 10 epoche
+        #Each 10 epochs generate random images to check the results
         with torch.no_grad():
             fake = netG(fixed_noise).detach().cpu()
             plt.figure(figsize=(8,8))
@@ -298,13 +297,13 @@ for epoch in range(start_epoch, num_epochs):
             plt.imshow(np.transpose(vutils.make_grid(fake, padding=2, normalize=True), (1,2,0)))
             plt.show()
 
-# Salva i modelli finali
+# Save the final model
 torch.save(netG.state_dict(), checkpoint_path_generator)
 torch.save(netD.state_dict(), checkpoint_path_discriminator)
 torch.save(num_epochs, checkpoint_path_epoch)  # Salva l'epoca finale
 print("Modelli finali salvati.")
 
-# Visualizza i risultati finali e salva il grafico delle perdite
+#Show the final results and save the loss 
 with torch.no_grad():
     fake = netG(fixed_noise).detach().cpu()
     plt.figure(figsize=(8, 8))

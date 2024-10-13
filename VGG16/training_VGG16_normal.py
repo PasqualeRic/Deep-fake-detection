@@ -1,7 +1,10 @@
 #pip install diffusers
 #pip install pycocotools
-#In this file I generete the images with stable diffusion using the coco's dataset and the file training_VGG16_64_256 train the classifier with upsampling and downsampling images
-#and to avoid to generate others 2000 images with stable I save this images and utilise them in that file
+
+""" 
+In this file I generated the images with stable scatter using the coco dataset. 
+On the other hand, the file training_VGG16_64_256 trains the classifier with upsampling and downsampling images and, 
+to avoid generating another 2000 images with stable diffusion, I save them and use them in that file. """
 import torch
 from diffusers import DiffusionPipeline
 from torchvision import models, transforms
@@ -14,7 +17,7 @@ import joblib
 import concurrent.futures
 from accelerate import Accelerator
 
-# The train2017 and instances_train2017_subset are subsets of COCO's dataset, they contain only 2000 images
+# The train2017 and instances_train2017_subset are subsets of COCO dataset, they contain only 2000 images
 coco_root = '/kaggle/input/coco-2017-dataset/coco2017/train2017'
 coco_annotation_file = '/kaggle/input/coco-2017-dataset/coco2017/annotations/instances_train2017.json'
 coco = COCO(coco_annotation_file)
@@ -25,19 +28,19 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 dtype = torch.float16 if device == "cuda" else torch.float32
 
-# Inizializza Accelerator per la gestione delle GPU
+#Initialise Accelerator for GPU management
 accelerator = Accelerator()
 
-# Carica il modello di diffusione
+#Load the stable diffusion model
 pipeline = DiffusionPipeline.from_pretrained("stabilityai/stable-diffusion-2-1", torch_dtype=dtype)
 pipeline.to(accelerator.device)
 
-# Funzione per generare immagini
+# Function to generate image
 def generate_image(prompt):
     image = pipeline(prompt, num_inference_steps=8).images[0]
     return image.convert("RGB")
 
-# Funzione per estrarre caratteristiche con VGG
+# Function for extracting features with VGG
 def extract_vgg_features(image, model):
     preprocess = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -49,13 +52,12 @@ def extract_vgg_features(image, model):
         features = model(input_tensor)
     return features.flatten().cpu().numpy()
 
-# Funzione per salvare le immagini fake
+# These two functions save the real and the generated image.
 def save_image_fake(image, save_dir, img_id):
     os.makedirs(save_dir, exist_ok=True)  # Crea la cartella se non esiste
     save_path = os.path.join(save_dir, f"fake_image_{img_id}.jpg")
     image.save(save_path, format="JPEG")
     print(f"Immagine salvata in: {save_path}")
-# Funzione per salvare le immagini reali
 def save_image_real(image, save_dir, img_id):
     os.makedirs(save_dir, exist_ok=True)  # Crea la cartella se non esiste
     save_path = os.path.join(save_dir, f"real_image_{img_id}.jpg")
@@ -71,47 +73,47 @@ vgg16.eval().to(accelerator.device)  # put in eval modality and transfer to the 
 # Directory di salvataggio
 real_dir = "/kaggle/working/real_images"
 fake_dir = "/kaggle/working/fake_images"
-classifier = SVC(kernel='linear')  # Usa tutte le CPU disponibili
+classifier = SVC(kernel='linear') 
 features_list = []
 labels = []
 last_step = 0
 
-# Estrai immagini da COCO
+# Extract images from COCO
 image_ids = coco.getImgIds()
 sample_ids = image_ids[last_step:]
 
 step = 0
 
-# Generazione immagini e raccolta caratteristiche tqdm
+#Cycle to generate images from coco annotations, store real images and generate images with a label 0 for false, 1 for true and finally train the svm
 for img_id in sample_ids:
     img_data = coco.imgs[img_id]
     img_path = os.path.join(coco_root, img_data['file_name'])
-    if step >= 2000:  # Limita a 2000 immagini
+    if step >= 2000:  #we take the first 2000 images from coco
         break
 
     try:
-        # Immagine reale
+        # Real images
         image_real = Image.open(img_path).convert("RGB")
         real_features = extract_vgg_features(image_real, vgg16)
         features_list.append(real_features)
-        labels.append(1)  # etichetta per le immagini reali
+        labels.append(1)  # label 1 for real image
         save_image_real(image_real, real_dir, img_id)
 
-        # Ottieni categorie per generare immagini fake
+        # We extract the prompt from the coco dataset to generate an image with stable diffusion
         ann_ids = coco.getAnnIds(imgIds=[img_id], iscrowd=False)
         anns = coco.loadAnns(ann_ids)
         categories = [coco.cats[ann['category_id']]['name'] for ann in anns]
         prompt = ", ".join(categories)
 
-        # Generazione immagini in parallelo
+        # dataparallel
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future_image = executor.submit(generate_image, prompt)
-            image_fake = future_image.result()  # Aspetta il risultato
+            image_fake = future_image.result() 
             save_image_fake(image_fake, fake_dir, img_id)
 
         fake_features = extract_vgg_features(image_fake, vgg16)
         features_list.append(fake_features)
-        labels.append(0)  # etichetta per le immagini fake
+        labels.append(0)  # label 0 for generated images
 
         step += 1
 
@@ -119,25 +121,25 @@ for img_id in sample_ids:
         print(f"Errore nell'elaborazione dell'immagine ID {img_id}: {e}")
 
 step = 0
-# Elaborazione delle immagini GAN
+#Feature extraction from the GAN train dataset
 gan_images = os.listdir(gan_root)
 for gan_img_name in gan_images:
     img_path = os.path.join(gan_root, gan_img_name)
     try:
-        # Immagine GAN
+        #GAN images
         gan_image = Image.open(img_path).convert("RGB")
         gan_features = extract_vgg_features(gan_image, vgg16)
         features_list.append(gan_features)
-        labels.append(0)  # etichetta per le immagini GAN
+        labels.append(0)
         print(step)
         step += 1
 
     except Exception as e:
         print(f"Errore nell'elaborazione dell'immagine ID {img_id}: {e}")
 
-# Addestra il classificatore SVM
+# Train the SVM
 classifier.fit(features_list, labels)
 
-# Salva il modello finale
+# Save the final model
 joblib.dump(classifier, 'svm_classifier.pkl')
 print("Modello SVM salvato come 'svm_classifier.pkl'")

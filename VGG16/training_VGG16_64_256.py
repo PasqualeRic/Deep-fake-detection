@@ -10,7 +10,7 @@ import joblib
 import concurrent.futures
 from accelerate import Accelerator
 
-# The train2017 and instances_train2017_subset are subsets of COCO's dataset, they contain only 2000 images
+# Train dataset
 coco_root = '/kaggle/input/coco-subset'
 gan_root = '/kaggle/input/gan-2000-images-64x64' 
 stable_root = '/kaggle/input/stable-diffusion'
@@ -19,44 +19,43 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 dtype = torch.float16 if device == "cuda" else torch.float32
 
-# Inizializza Accelerator per la gestione delle GPU
+#Initialise Accelerator for GPU management
 accelerator = Accelerator()
 
-# Funzione per salvare le immagini 
+# Function to save images
 def save_image_256(image, save_dir, img_id):
-    os.makedirs(save_dir, exist_ok=True)  # Crea la cartella se non esiste
+    os.makedirs(save_dir, exist_ok=True)  
     save_path = os.path.join(save_dir, f"image_256x256{img_id}.jpg")
     image.save(save_path, format="JPEG")
     print(f"Immagine salvata in: {save_path}")
 def save_image_64(image, save_dir, img_id):
-    os.makedirs(save_dir, exist_ok=True)  # Crea la cartella se non esiste
+    os.makedirs(save_dir, exist_ok=True) 
     save_path = os.path.join(save_dir, f"image_64x64{img_id}.jpg")
     image.save(save_path, format="JPEG")
     print(f"Immagine salvata in: {save_path}")
 def save_image_fake(image, save_dir, img_id):
-    os.makedirs(save_dir, exist_ok=True)  # Crea la cartella se non esiste
+    os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(save_dir, f"fake_image_{img_id}.jpg")
     image.save(save_path, format="JPEG")
     print(f"Immagine salvata in: {save_path}")
-# Funzione per salvare le immagini reali
 def save_image_real(image, save_dir, img_id):
-    os.makedirs(save_dir, exist_ok=True)  # Crea la cartella se non esiste
+    os.makedirs(save_dir, exist_ok=True) 
     save_path = os.path.join(save_dir, f"real_image_{img_id}.jpg")
     image.save(save_path, format="JPEG")
     print(f"Immagine salvata in: {save_path}")
 
-# Funzione per upsampling a 256x256 se la dimensione è inferiore a 256x256
+#Function for upsampling to 256x256 if the size is smaller than 256x256
 def upsample_to_256(image):
     if image.size[0] < 256 or image.size[1] < 256:
         return image.resize((256, 256), Image.BICUBIC)
     return image
 
-# Funzione per downsampling a 256x256 se la dimensione è superiore a 256x256
+#Function for downsampling to 256x256 if the size is larger than 256x256
 def downsample_to_256(image):
     if image.size[0] > 256 or image.size[1] > 256:
         return image.resize((256, 256), Image.LANCZOS)
     return image
-# Funzione per downsampling a 64x64 se la dimensione è superiore a 64x64
+#Function for downsampling to 64x64 if the size is larger than 64x64
 def downsample_to_64(image):
     if image.size[0] > 64 or image.size[1] > 64:
         return image.resize((64, 64), Image.LANCZOS)
@@ -77,12 +76,12 @@ vgg16 = models.vgg16(pretrained=True)
 vgg16.classifier = vgg16.classifier[:-1]  # remove the last layer
 vgg16.eval().to(accelerator.device)  # put in eval modality and transfer to the GPU
 
-#directory salvataggio immagini
+#directory to saving images
 original_dir = "/kaggle/working/original"
 gan_dir = "/kaggle/working/gan"
 stable_dir = "/kaggle/working/stable"
 
-classifier_256 = SVC(kernel='linear')  # Usa tutte le CPU disponibili
+classifier_256 = SVC(kernel='linear')
 classifier_64 = SVC(kernel='linear')
 
 features_list_256 = []
@@ -90,42 +89,43 @@ features_list_64 = []
 labels_256 = []
 labels_64 = []
 
-# Estrai immagini da COCO
+# Extract images from coco
 coco_images = os.listdir(coco_root)
 
-#estrai immagini da gan
+# Extract images from gan
 gan_images = os.listdir(gan_root)
 
-#estrai immagini da stable
+# Extract images from stable
 stable_images = os.listdir(stable_root)
 
 step = 0
 original = True
 gan = True
 stable = True
-
+#We have two classifier, one for 256x256 and one for 64x64
 #Append coco's image
 print("sei in coco")
 for coco_img_name in coco_images:
     img_path = os.path.join(coco_root, coco_img_name)
     try:
-        # Immagine reale
+        # real image
         img = Image.open(img_path).convert("RGB")
         image_real_256 = downsample_to_256(img)
         image_real_64 = downsample_to_64(img)
+        #This if is used just to save one image for all the dimension
         if(original == True):
             save_image_real(img, original_dir, coco_img_name)
             save_image_256(image_real_256, original_dir, coco_img_name)
             save_image_64(image_real_64, original_dir, coco_img_name)
             original = False
-            
+        #Feature extraction 
         real_features_256 = extract_vgg_features(image_real_256, vgg16)
         real_features_64 = extract_vgg_features(image_real_64, vgg16)
         
         features_list_256.append(real_features_256)
         features_list_64.append(real_features_64)
         
-        labels_256.append(1)  # etichetta per le immagini reali
+        labels_256.append(1)  #we append 1 for the real images
         labels_64.append(1)
         step += 1
 
@@ -139,7 +139,7 @@ for stable_img_name in stable_images:
     img_path = os.path.join(stable_root, stable_img_name)
 
     try:
-        # Immagine da Stable Diffusion
+        # Stable diffusion images
         img = Image.open(img_path).convert("RGB")
         image_stable_256 = downsample_to_256(img)
         image_stable_64 = downsample_to_64(img)
@@ -155,21 +155,21 @@ for stable_img_name in stable_images:
         features_list_256.append(stable_features_256)
         features_list_64.append(stable_features_64)
         
-        labels_256.append(0)  # etichetta per le immagini reali
+        labels_256.append(0)  #0 for generated
         labels_64.append(0)
         step += 1
     except Exception as e:
         print(f"Errore nell'elaborazione dell'immagine Stable {stable_img_name}: {e}")
 
 
-# Elaborazione delle immagini GAN
+# Append gan's image
 step = 0
 print("sei in gan")
 for gan_img_name in gan_images:
     img_path = os.path.join(gan_root, gan_img_name)
 
     try:
-        # Immagine da Stable Diffusion
+        # gan images
         img = Image.open(img_path).convert("RGB")
         image_gan_256 = upsample_to_256(img)
         if(gan == True):
@@ -183,18 +183,18 @@ for gan_img_name in gan_images:
         features_list_256.append(gan_features_256)
         features_list_64.append(gan_features_64)
         
-        labels_256.append(0)  # etichetta per le immagini reali
+        labels_256.append(0)  # 0 for generated
         labels_64.append(0)
         step += 1
     except Exception as e:
         print(f"Errore nell'elaborazione dell'immagine Gan {gan_img_name}: {e}")
 
 
-# Addestra il classificatore SVM
+# train the SVM classifiers, one with only 256x256 images and the other one with 64x64
 classifier_256.fit(features_list_256, labels_256)
 classifier_64.fit(features_list_256, labels_64)
 
-# Salva il modello finale
+# Store the final models
 joblib.dump(classifier_256, 'svm_classifier_256.pkl')
 print("Modello SVM salvato come 'svm_classifier_256.pkl'")
 joblib.dump(classifier_64, 'svm_classifier_64.pkl')
