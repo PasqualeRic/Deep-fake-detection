@@ -31,7 +31,8 @@ This is an example with original, downsampling to 64x64 and upsampling to 256x25
 
 ## Structure of the project
 - `Test/`
-  - `Notebook`   
+  - `Notebook/`
+    -`Test.ipynb`:This file could be uploaded to kaggle to work.
   - `src/`
     - `config.py`:Configuration file that defines file paths and directories, including COCO annotations, directories for generated images, and SVM model checkpoints​.
     - `data_loader.py`:Defines custom datasets for loading and preprocessing images, with or without compression, and creates DataLoaders for batch processing of images.
