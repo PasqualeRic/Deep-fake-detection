@@ -1,0 +1,9 @@
+torch
+diffusers
+transformers
+Pillow
+numpy
+scikit-learn
+matplotlib
+joblib
+torchmetrics
