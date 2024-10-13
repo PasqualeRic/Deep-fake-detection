@@ -33,14 +33,14 @@ This is an example with original, downsampling to 64x64 and upsampling to 256x25
 - `Test/`
   - `Notebook`   
   - `src/`
-    - `config.py`:
-    - `data_loader.py`:
-    - `generator.py`:
-    - `main.py`:
-    - `metrics.py`:
-    - `setup_env.py`:
-    - `stable_diffusion_pipeline.py`:
-    - `vgg16_classifier`:
+    - `config.py`:Configuration file that defines file paths and directories, including COCO annotations, directories for generated images, and SVM model checkpoints​.
+    - `data_loader.py`:Defines custom datasets for loading and preprocessing images, with or without compression, and creates DataLoaders for batch processing of images.
+    - `generator.py`:Contains the definition and loading of the GAN generator model used to generate images from a latent vector. It also includes a function to load a pre-trained generator model from a checkpoint.
+    - `main.py`:The main script that sets up the environment, loads the GAN and Stable Diffusion models, generates images, and calculates evaluation metrics like FID and IS. It also handles COCO annotations and performs classification using an SVM classifier​.
+    - `metrics.py`:Implements functions to calculate the Inception Score (IS), Fréchet Inception Distance (FID), and classification metrics (Accuracy, Precision, Recall, F1 Score). It also includes a function to save the metric results.
+    - `setup_env.py`:Manages the environment setup by checking for GPU availability and loading the Stable Diffusion pipeline for image generation​.
+    - `stable_diffusion_pipeline.py`: Provides functions to load the Stable Diffusion pipeline and generate images based on text prompts​.
+    - `vgg16_classifier`:Contains functions to load a pre-trained VGG16 model for image feature extraction and to load a pre-trained SVM classifier.
       
 - `VGG16/`
   - `training-vgg16.ipynb`: This file could be uploaded to kaggle to work.
