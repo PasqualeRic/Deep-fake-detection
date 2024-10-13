@@ -27,7 +27,21 @@ This is an example with original, downsampling to 64x64 and upsampling to 256x25
 </p>
 ## aggiungere cosa abbiamo fatto con modelli e test fatti
 
+
+
 ## Structure of the project
+- `Test/`
+  - `Notebook`   
+  - `src/`
+    - `config.py`:
+    - `data_loader.py`:
+    - `generator.py`:
+    - `main.py`:
+    - `metrics.py`:
+    - `setup_env.py`:
+    - `stable_diffusion_pipeline.py`:
+    - `vgg16_classifier`:
+      
 - `VGG16/`
   - `training-vgg16.ipynb`: This file could be uploaded to kaggle to work.
   - `training_VGG16_64_256`: This file contains the code for training the SVM model with image sizes 64x64 and 256x256 from coco.
@@ -37,9 +51,9 @@ This is an example with original, downsampling to 64x64 and upsampling to 256x25
   - `Generator.py`: This file contains the code for generating the fake images with GAN.
   - `training_GAN.py`: This file contains the code for training the GAN model with image from coco.
   - `gan.ipynb`: This file could be uploaded to kaggle to work
-## Installazione
+## Installation
 
-1. Clona il repository.
+1. Clone the repository.
    ```bash
    git clone https://github.com/PasqualeRic/Deep-fake-detection.git
    cd Deep-fake-detection
