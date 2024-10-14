@@ -113,7 +113,7 @@ The results are shown in the table below:
 ## Structure of the project
 - `Test/`
   - `Notebook/`
-    -`Test.ipynb`:This file could be uploaded to kaggle to work.
+    -`test-cv.ipynb`:This file could be uploaded to kaggle to work.
   - `src/`
     - `config.py`:Configuration file that defines file paths and directories, including COCO annotations, directories for generated images, and SVM model checkpoints​.
     - `data_loader.py`:Defines custom datasets for loading and preprocessing images, with or without compression, and creates DataLoaders for batch processing of images.
