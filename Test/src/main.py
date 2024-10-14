@@ -56,22 +56,39 @@ def main():
     real_images_loader = create_dataloader(COCO_IMAGES_DIR, img_size=64)
     generated_images_loader = create_dataloader(STABLE_IMAGES_DIR_64, img_size=64)
 
-    # Load VGG16 model and SVM classifier
+    # Load VGG16 model
     vgg16_model = load_vgg16_model(device)
-    svm_classifier = load_svm_classifier(SVM_CHECKPOINT_64)
 
-    # Extract features
+    # Load SVM classifiers for different tests
+    svm_classifier_64 = load_svm_classifier('/kaggle/input/checkpoint-classificatore-6464/svm_classifier_64.pkl')  # For 64x64 tests
+    svm_classifier_256 = load_svm_classifier('/kaggle/input/checkpoint-classificatore-256256/svm_classifier_256.pkl')  # For 256x256 tests
+    svm_classifier_mixed = load_svm_classifier('/kaggle/input/checkpoint-classificatore/svm_classifier_mixed.pkl')  # For mixed (64x64 vs 256x256)
+
+    # Extract features for classification
     real_features = extract_features(next(iter(real_images_loader))[0], vgg16_model, device)
-    generated_features = extract_features(next(iter(generated_images_loader))[0], vgg16_model, device)
+    generated_features_64 = extract_features(next(iter(generated_images_loader))[0], vgg16_model, device)
 
-    # Classification with SVM
-    print("Calculating classification metrics using the SVM classifier...")
-    y_true = [1] * len(real_features) + [0] * len(generated_features)  # Real = 1, Generated = 0
-    y_pred = svm_classifier.predict(np.vstack([real_features, generated_features]))
+    # Classification with SVM for 64x64 images
+    print("Calculating classification metrics for GAN 64x64 vs Stable Diffusion 64x64 using SVM 64x64...")
+    y_true = [1] * len(real_features) + [0] * len(generated_features_64)
+    y_pred = svm_classifier_64.predict(np.vstack([real_features, generated_features_64]))
+    metrics_save_path_64 = os.path.join(RESULTS_DIR, 'classification_metrics_gan_stable_6464.txt')
+    calculate_classification_metrics(y_true, y_pred, metrics_save_path_64)
 
-    # Save classification metrics (Accuracy, Precision, Recall, F1)
-    metrics_save_path = os.path.join(RESULTS_DIR, 'classification_metrics.txt')
-    calculate_classification_metrics(y_true, y_pred, metrics_save_path)
+    # Comparison: GAN 64x64 vs Stable Diffusion 256x256 using SVM 256x256
+    generated_images_loader_256 = create_dataloader(STABLE_IMAGES_DIR_256, img_size=256)
+    generated_features_256 = extract_features(next(iter(generated_images_loader_256))[0], vgg16_model, device)
+
+    print("Calculating classification metrics for GAN 64x64 vs Stable Diffusion 256x256 using SVM 256x256...")
+    y_pred_256 = svm_classifier_256.predict(np.vstack([generated_features_64, generated_features_256]))
+    metrics_save_path_256 = os.path.join(RESULTS_DIR, 'classification_metrics_gan_stable_256.txt')
+    calculate_classification_metrics([1] * len(generated_features_64) + [0] * len(generated_features_256), y_pred_256, metrics_save_path_256)
+
+    # New comparison: Stable Diffusion 256x256 vs GAN 64x64 using the mixed classifier
+    print("Calculating classification metrics for Stable Diffusion 256x256 vs GAN 64x64 using the mixed SVM classifier...")
+    y_pred_stable256_gan64 = svm_classifier_mixed.predict(np.vstack([generated_features_256, generated_features_64]))
+    metrics_save_path_stable256_gan64 = os.path.join(RESULTS_DIR, 'classification_metrics_stable256_gan64.txt')
+    calculate_classification_metrics([1] * len(generated_features_256) + [0] * len(generated_features_64), y_pred_stable256_gan64, metrics_save_path_stable256_gan64)
 
     # Optionally calculate FID
     fid_score = calculate_fid(real_images_loader, generated_images_loader, device)
