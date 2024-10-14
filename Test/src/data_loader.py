@@ -9,10 +9,9 @@ class ImageDataset(Dataset):
     
     Args:
         img_dir (str): Directory containing the images.
-        size (int): Size to resize the images.
-        compression_quality (int): Quality of JPEG compression (100 means no compression).
+        size (int or None): Size to resize the images, or None to keep original size.
     """
-    def __init__(self, img_dir, size, compression_quality=100):
+    def __init__(self, img_dir, size=None, compression_quality=100):
         self.img_dir = img_dir
         self.size = size
         self.compression_quality = compression_quality
@@ -24,62 +23,32 @@ class ImageDataset(Dataset):
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.image_names[idx])
         image = Image.open(img_path).convert('RGB')
-        image = self.preprocess_image(image, self.size, self.compression_quality)
+        image = self.preprocess_image(image)
         return image, self.image_names[idx]
 
-    def preprocess_image(self, image, size, compression_quality):
+    def preprocess_image(self, image):
         """
-        Preprocesses and compresses the image.
-        
-        Args:
-            image (PIL.Image): Input image to preprocess.
-            size (int): Desired size for resizing.
-            compression_quality (int): Quality of compression (100 = no compression).
-        
-        Returns:
-            Tensor: Preprocessed image as a Tensor.
+        Preprocess the image (resize if size is provided, otherwise keep original size).
         """
+        if self.size:
+            image = image.resize((self.size, self.size))
         transform = transforms.Compose([
-            transforms.Resize((size, size)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
-        
-        # Compress and resize the image
-        temp_img_path = '/tmp/temp_image.jpg'
-        image = image.resize((size, size))
-        image.save(temp_img_path, format='JPEG', quality=compression_quality)
-        compressed_image = Image.open(temp_img_path).convert('RGB')
-        return transform(compressed_image)
+        return transform(image)
 
-def create_dataloader_with_compression(img_dir, batch_size=32, img_size=64, compression_quality=100):
+def create_dataloader(img_dir, batch_size=32, img_size=None):
     """
-    Creates a DataLoader for loading images with compression applied.
+    Creates a DataLoader for loading images, optionally resizing them.
     
     Args:
         img_dir (str): Directory containing the images.
         batch_size (int): Batch size for DataLoader.
-        img_size (int): Size to resize images.
-        compression_quality (int): Quality of JPEG compression for preprocessing.
+        img_size (int or None): Size to resize images, or None to keep original size.
     
     Returns:
         DataLoader: DataLoader for the images.
     """
-    dataset = ImageDataset(img_dir, img_size, compression_quality=compression_quality)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=False)
-
-    
-def create_dataloader(img_dir, batch_size=32, img_size=64):
-    """
-    Creates a DataLoader for loading images without compression applied.
-    
-    Args:
-        img_dir (str): Directory containing the images.
-        batch_size (int): Batch size for DataLoader.
-        img_size (int): Size to resize images.
-    
-    Returns:
-        DataLoader: DataLoader for the images.
-    """
-    dataset = ImageDataset(img_dir, img_size, compression_quality=100)  # Set compression_quality to 100 (no compression)
+    dataset = ImageDataset(img_dir, size=img_size)
     return DataLoader(dataset, batch_size=batch_size, shuffle=False)
