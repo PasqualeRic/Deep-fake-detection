@@ -92,8 +92,8 @@ The results are shown in the table below:
 |**Combined 64x64 Compression 60%**   |  0.7145      |  0.6616       |  0.8780     |  0.7546    |
 |**Combined 64x64 Compression 40%**   |  0.6993      |  0.6468       |  0.8780     |  0.7449    |
 |**Combined 64x64**                   |  0.6583      |  0.6096       |  0.8805     |  0.7204    |
-|**Gan**                              |              |               |             |            |
-|**Stable**                           |              |               |             |            |
+|**Gan**                              |  0.4975      |  0.4984       |  0.7720     |  0.6057    |
+|**Stable**                           |  0.8285      |  0.8703       |  0.7720     |  0.8182    |
 
 
 **GAN 256x256**: It has good accuracy, precision, recall and F1-score metrics, suggesting that the model can discriminate between real and fake images with some effectiveness.
@@ -112,7 +112,12 @@ The results are shown in the table below:
 
 **Combined 64x64**: It has the lowest performance metrics among the combined models, confirming that without compression, low resolution limitations negatively affect the model's ability to distinguish images.
 
+**Gan**: This model has the worst metrics among the models without compression, so the classifier does not correctly recognise whether the images are real or fake, problably due to the lower quality of the images provided by the Gan model.
 
+**Stable diffusion** This model ha one of the best metrics due to the high qulity of the images, so the classifier recognises better whether the images are real or fake.
+
+## Conclusion
+The VGG16 classifier showed high accuracy in distinguishing real from generated images, but with compression and low resolution, the metrics are not too good, so it is necessary that the images are of high quality and less noisy.
 
 ## Structure of the project
 - `Test/`
